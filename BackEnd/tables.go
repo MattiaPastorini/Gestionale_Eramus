@@ -7,7 +7,7 @@ import (
 )
 
 type Utente struct{
-	Id uuid.UUID  `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	ID uuid.UUID  `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
 	Username string `gorm:"unique;not null"`
 	Email string `gorm:"unique;not null"`
 	Password string `gorm:"not null"`
@@ -23,18 +23,18 @@ type Utente struct{
 	DataAggiornamento time.Time `gorm:"column:data_aggiornamento;autoUpdateTime"`
 }
 type Ruolo struct{
-	Id uuid.UUID  `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	ID uuid.UUID  `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
 	NomeRuolo string `gorm:"unique;not null;column:nome_ruolo"`
 	Descrizione string `gorm:"type:text"`
 }
 type TipoProdotto struct{
-	Id uuid.UUID  `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	ID uuid.UUID  `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
 	CorpoMessaggio string `gorm:"type:text"`
 	DataInvio time.Time `gorm:"column:data_invio"`
 	EsitoInvio string `gorm:"type:varchar(50)"`
 }
 type Prodotto struct{
-	Id uuid.UUID  `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	ID uuid.UUID  `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
 	NomeOggetto string `gorm:"column:nome_oggetto"`
 	Descrizione string `gorm:"type:text"`
 	QuantitaDisponibile int `gorm:"default:0"`
@@ -48,7 +48,7 @@ type Prodotto struct{
 	DataUltimaModifica time.Time `gorm:"column:data_ultima_modifica;autoUpdateTime"`
 }
 type MovimentoMagazzino struct{
-	Id uuid.UUID  `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	ID uuid.UUID  `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
 	ProdottoID uuid.UUID `gorm:"type:uuid;not null"`
 	Prodotto Prodotto  `gorm:"foreignKey:ProdottoID"`
 	TipoMovimento string `gorm:"not null;column:tipo_movimento"`
@@ -59,7 +59,7 @@ type MovimentoMagazzino struct{
 	Note string	`gorm:"type:text"`
 }
 type LogAccessi struct{
-	Id uuid.UUID  `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	ID uuid.UUID  `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
 	UtenteID uuid.UUID `gorm:"type:uuid;not null"`
 	Utente Utente `gorm:"foreignKey:UtenteID"`
 	DataAccesso time.Time `gorm:"column:data_accesso;autoCreateTime"`
@@ -68,7 +68,7 @@ type LogAccessi struct{
 }
 
 type RecuperoPassword struct{
-	Id uuid.UUID  `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	ID uuid.UUID  `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
 	UtenteID uuid.UUID `gorm:"type:uuid;not null"`
 	Utente Utente `gorm:"foreignKey:UtenteID"`
 	TokenUnivoco string    `gorm:"unique;not null"`
@@ -77,7 +77,7 @@ type RecuperoPassword struct{
 	Stato string    `gorm:"type:varchar(20);default:'Non usato'"`
 }
 type NotificheEmail struct{
-	Id uuid.UUID  `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	ID uuid.UUID  `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
 	TipoEvento string `gorm:"type:varchar(100);not null"`
 	Destinatario string  `gorm:"not null"`
 	Oggetto string  `gorm:"not null"`
