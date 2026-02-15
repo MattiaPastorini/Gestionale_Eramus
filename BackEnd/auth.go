@@ -17,7 +17,7 @@ type Claims struct {
 
 
 
-func GenerateTokens (UtenteID uuid.UUID, Ruolo string) (string, string, error){
+func GenerateTokens(UtenteID uuid.UUID, Ruolo string) (string, string, error){
 	expirationTime := time.Now().Add(15*time.Minute)
 	claims := &Claims{
 		UtenteID: UtenteID,

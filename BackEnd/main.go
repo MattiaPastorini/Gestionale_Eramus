@@ -17,14 +17,12 @@ import (
 
 func setupInitialData(db *gorm.DB) {
 	var adminRuolo Ruolo
-	// Crea ruolo se non esiste
 	db.FirstOrCreate(&adminRuolo, Ruolo{NomeRuolo: "Admin"})
 	db.FirstOrCreate(&Ruolo{}, Ruolo{NomeRuolo: "Operatore"})
 
 	var count int64
 	db.Model(&Utente{}).Count(&count)
 	if count == 0 {
-		// Usa la funzione HashPassword che hai in utils.go
 		pass, _ := HashPassword("Admin123!") 
 		admin := Utente{
 			Username:     "admin",
@@ -54,7 +52,6 @@ func CORSMiddleware() gin.HandlerFunc {
 }
 
 func main() {
-    // Carica .env
     if err := godotenv.Load(); err != nil {
         log.Println("WARN: .env non trovato, uso variabili di sistema")
     }
@@ -74,7 +71,7 @@ func main() {
         panic("Errore connessione al DataBase: " + err.Error())
     }
 
-    // Config connection pool
+  
     sqlDB, err := db.DB()
     if err != nil {
         panic("Errore DB pool: " + err.Error())
@@ -83,7 +80,7 @@ func main() {
     sqlDB.SetMaxOpenConns(100)
     sqlDB.SetConnMaxLifetime(time.Hour)
 
-    // Migrazione
+
     if err := db.AutoMigrate(&Ruolo{}, &Utente{}, &LogAccessi{}); err != nil {
         log.Println("Errore migrazione:", err)
     } else {
@@ -96,14 +93,28 @@ func main() {
     r := gin.Default()
     r.Use(CORSMiddleware())
 
+
     api := r.Group("/api")
     {
         api.POST("/login", GestioneLogin(db))
         api.POST("/forgot-password", RichiestaResetPassword(db))
         api.POST("/reset-password-confirm", ConfermaResetPassword(db))
-
-		api.GET("/dashboard/statistiche", GetStatisticheDashboard(db))
     }
+
+
+    admin := r.Group("/api")
+    admin.Use(AuthMiddleware("Admin"))
+    {
+
+        admin.GET("/utenti", GestioneUtenti(db))      
+        admin.POST("/utenti", CreaUtente(db))         
+        admin.PUT("/utenti/:id", ModificaUtente(db))   
+        admin.DELETE("/utenti/:id", DisattivaUtente(db)) 
+        
+
+        admin.GET("/dashboard/statistiche", GetStatisticheDashboard(db))
+    }
+
 
     fmt.Println("Server su http://localhost:8080")
     r.Run(":8080")

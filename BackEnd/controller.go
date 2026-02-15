@@ -5,9 +5,11 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 type RichiestaLogin struct {
@@ -114,14 +116,14 @@ func RichiestaResetPassword(db*gorm.DB) gin.HandlerFunc{
 			return 
 		}
 
-		// Simulazione invio email (come richiesto, per ora in console)
+		// Simulazione invio email
 		fmt.Printf("\n--- EMAIL DI RECUPERO per %s ---\nLink: http://localhost:3000/reset-password?token=%s\n--------------------------------\n", utente.Email, token)
 
 		c.JSON(http.StatusOK, gin.H{"message": "Istruzioni inviate via email"})
 
 	}
 }
-func ConfermaResetPassword (db * gorm.DB) gin.HandlerFunc{
+func ConfermaResetPassword(db * gorm.DB) gin.HandlerFunc{
 	return func(c *gin.Context) {
 		var req struct{
 			Token       string `json:"token" binding:"required"`
@@ -198,4 +200,133 @@ func GetStatisticheDashboard(db *gorm.DB) gin.HandlerFunc{
 		c.JSON(200, statistiche)
 	}
 	
+}
+
+func GestioneUtenti(db*gorm.DB) gin.HandlerFunc{
+	return func(c *gin.Context) {
+		page, _:= strconv.Atoi(c.DefaultQuery("page", "1"))
+		limit, _:= strconv.Atoi(c.DefaultQuery("limit", "10"))
+		search := c.Query("search")
+		offset  := (page - 1)* limit
+
+		var utenti []Utente
+		var total int64
+
+		query := db.Model(&Utente{}).Preload("Ruolo")
+
+		if search != "" {
+			query = query.Where("username ILIKE ? OR email ILIKE ?", "%"+search+"%", "%"+search+"%")
+		}
+
+		query.Count(&total)
+
+		if err := query.Limit(limit).Offset(offset).Find(&utenti).Error; err != nil{
+			c.JSON(http.StatusInternalServerError, gin.H{"error":"Errore nel recupero utenti"})
+			return 
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"data": utenti,
+			"total": total,
+			"page": page,
+			"last_page": int(total/int64(limit))+1,
+		})
+
+
+	}
+}
+
+func DisattivaUtente(db*gorm.DB) gin.HandlerFunc{
+	return func(c *gin.Context) {
+		id := c.Param("id")
+
+		if err := db.Where("id = ?", id).Delete(&Utente{}).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error":"Errore nella disattivazione dell'utente"})
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message":"Utente disattivato"})
+	}
+}
+
+
+func CreaUtente(db*gorm.DB) gin.HandlerFunc{
+	return func(c *gin.Context) {
+		var req struct{
+		Username    string    `json:"username" binding:"required"`
+		Email       string    `json:"email" binding:"required"`
+		Password    string    `json:"password" binding:"required"`
+		Nome        string    `json:"nome"`
+		Cognome     string    `json:"cognome"`
+		DataNascita time.Time `json:"data_nascita"`
+		RuoloID     uuid.UUID `json:"ruolo_id" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil{
+		c.JSON(http.StatusBadRequest, gin.H{"error":"Dati mancanti o errati"})
+		return 
+	}
+
+	if !PasswordValida(req.Password){
+		c.JSON(http.StatusBadRequest, gin.H{"error":"La Password non rispetta le linee guida"})
+		return
+	}
+
+	hashedPassword, _ := HashPassword(req.Password)
+
+	NewUtente := Utente{
+		Username:     req.Username,
+		Email:        req.Email,
+		Password:     hashedPassword,
+		Nome:         req.Nome,
+		Cognome:      req.Cognome,
+		DataNascita:  req.DataNascita,
+		RuoloID:      req.RuoloID,
+		StatoAccount: "Attivo",
+	}
+
+	if err := db.Create(&NewUtente).Error; err != nil{
+		c.JSON(http.StatusConflict, gin.H{"error":"Username o Email già esistenti"})
+		return 
+	}
+
+	fmt.Printf("\n-- EMAIL DI BENVENUTO inviata a %s ---\nOggetto: Benvenuto nel Gestionale\nAccount creato con successo", NewUtente.Email)
+
+	c.JSON(http.StatusCreated,NewUtente)
+
+	}
+	
+
+}
+func ModificaUtente(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id") 
+		
+		var req struct {
+			Nome        string    `json:"nome"`
+			Cognome     string    `json:"cognome"`
+			Email       string    `json:"email"`
+			RuoloID     uuid.UUID `json:"ruolo_id"`
+			DataNascita time.Time `json:"data_nascita"`
+		}
+
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Dati non validi"})
+			return
+		}
+
+		result := db.Model(&Utente{}).Where("id = ?", id).Updates(map[string]interface{}{
+			"nome":         req.Nome,
+			"cognome":      req.Cognome,
+			"email":        req.Email,
+			"ruolo_id":     req.RuoloID, 
+			"data_nascita": req.DataNascita,
+		})
+
+		if result.Error != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Errore durante l'aggiornamento"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": "Utente e ruolo aggiornati correttamente"})
+	}
 }
