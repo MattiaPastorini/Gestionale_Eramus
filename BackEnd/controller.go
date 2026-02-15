@@ -168,3 +168,34 @@ func ConfermaResetPassword (db * gorm.DB) gin.HandlerFunc{
 
 	}
 }
+type GraficoPerCategoria struct{
+	Nome string `json:"nome"`
+	Quantita string `json:"quantita"`
+}
+type StatisticheDashboard struct{
+	UtentiTotali int64 `json:"utenti_totali"`
+	ProdottiTotali int64 `json:"prodotti_totali"`
+	ValoreInventario float64 `json:"valore_inventario"`
+	UltimiMovimenti []MovimentoMagazzino `json:"ultimi_movimenti"`
+	GraficoCategoria []GraficoPerCategoria `json:"grafico_categorie"`
+	
+}
+func GetStatisticheDashboard(db *gorm.DB) gin.HandlerFunc{
+	return func(c *gin.Context) {
+
+
+		var statistiche StatisticheDashboard 
+	
+		db.Model(&Utente{}).Count(&statistiche.UtentiTotali)  //conto utenti totali
+		db.Model(&Prodotto{}).Count(&statistiche.ProdottiTotali)  //conto prodotti totali
+		
+		db.Model(&Prodotto{}).Select("COALESCE(SUM(quantita_disponibile*prezzo_unitario),0)").Row().Scan(&statistiche.ValoreInventario) //calcolo prezzo dell'intero inventario, se è vuoto restituisce NULL
+		
+		db.Preload("Prodotto").Preload("UtenteOperazione").Order("data_movimento desc").Limit(5).Find(&statistiche.UltimiMovimenti) // Ultimi 5 movimenti
+
+		db.Table("prodotto").Select("tipo_prodotto.corpo_messaggio as nome, count(prodotto.id) as quantita").Joins("join tipo_prodotto on tipo_prodotto.id = prodotto.tipo_prodotto_id").Group("tipo_prodotto.corpo_messaggio").Scan(&statistiche.GraficoCategoria)
+	
+		c.JSON(200, statistiche)
+	}
+	
+}

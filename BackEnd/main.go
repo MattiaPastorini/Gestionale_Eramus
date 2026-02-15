@@ -101,6 +101,8 @@ func main() {
         api.POST("/login", GestioneLogin(db))
         api.POST("/forgot-password", RichiestaResetPassword(db))
         api.POST("/reset-password-confirm", ConfermaResetPassword(db))
+
+		api.GET("/dashboard/statistiche", GetStatisticheDashboard(db))
     }
 
     fmt.Println("Server su http://localhost:8080")
