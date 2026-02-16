@@ -89,7 +89,7 @@ func main() {
 
     setupInitialData(db)
 
-    // Gin
+    
     r := gin.Default()
     r.Use(CORSMiddleware())
 
@@ -114,6 +114,18 @@ func main() {
 
         admin.GET("/dashboard/statistiche", GetStatisticheDashboard(db))
     }
+
+	inventario := api.Group("/inventario")
+	inventario.Use(AuthMiddleware(""))
+	{
+		inventario.GET("/prodotti", ListaProdotti(db))
+		inventario.POST("/prodotti", CreaProdotto(db))
+		inventario.PUT("/prodotti/:id", ModifcaProdotto(db))
+		inventario.PUT("/prodotti/:id/stock", AggiornamentoStock(db))
+		inventario.DELETE("/prodotti/:id", EliminaProdotto(db))
+
+		inventario.GET("/tipi", TipiProdotto(db))
+	}
 
 
     fmt.Println("Server su http://localhost:8080")

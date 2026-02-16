@@ -330,3 +330,190 @@ func ModificaUtente(db *gorm.DB) gin.HandlerFunc {
 		c.JSON(http.StatusOK, gin.H{"message": "Utente e ruolo aggiornati correttamente"})
 	}
 }
+func CreaProdotto(db*gorm.DB) gin.HandlerFunc{
+	return func(c *gin.Context) {
+		creatoreID, _:= c.Get("utente_id")
+
+		var req struct{
+			NomeOggetto string  `json:"nome_oggetto" binding:"required"`
+			Descrizione string  `json:"descrizione" `
+			QuantitaDisponibile int  `json:"quantita_disponibile"`
+			PrezzoUnitario float64 `json:"prezzo_unitario" binding:"required"`
+			SogliaMinimaDiMagazzino int `json:"soglia_minima"`
+			TipoProdottoID uuid.UUID `json:"tipo_prodotto_id" binding:"required"`
+		}
+
+		if err:= c.ShouldBindJSON(&req); err != nil{
+			c.JSON(http.StatusBadRequest, gin.H{"error":"Dati prodotto non validi"})
+			return 
+		}
+
+		err := db.Transaction(func(tx *gorm.DB) error {
+			nuovoProdotto := Prodotto{
+				NomeOggetto: req.NomeOggetto,
+				Descrizione: req.Descrizione,
+				QuantitaDisponibile: req.QuantitaDisponibile,
+				PrezzoUnitario: req.PrezzoUnitario,
+				SogliaMinimaDiMagazzino: req.SogliaMinimaDiMagazzino,
+				TipoProdottoID: req.TipoProdottoID,
+				CreatoDaID: creatoreID.(uuid.UUID),
+			}
+
+			if err:=tx.Create(&nuovoProdotto).Error; err!=nil{
+				return err
+			}
+
+			movimento := MovimentoMagazzino{
+				ProdottoID: nuovoProdotto.ID,
+				TipoMovimento: "Carico iniziale",
+				Quantita: req.QuantitaDisponibile,
+				UtenteOperazioneID: creatoreID.(uuid.UUID),
+				Note: "Inserimento nuovo prodotto",
+			}
+			return tx.Create(&movimento).Error
+		})
+
+		if err != nil{
+			c.JSON(http.StatusInternalServerError, gin.H{"error":"Errore nel salvataggio del prodotto"})
+			return
+		}
+
+		c.JSON(http.StatusCreated, gin.H{"message":"Prodotto creato e movimento registrato con successo"})
+	}
+}
+func ListaProdotti(db*gorm.DB) gin.HandlerFunc{
+	return func(c *gin.Context) {
+		var prodotti []Prodotto
+		query := db.Preload("TipoProdotto").Preload("CreatoDa")
+
+		if nome := c.Query("nome");nome!=""{
+			query = query.Where("nome_oggetto ILIKE ?", "%"+nome+"%")
+		}
+
+		if tipo := c.Query("tipo"); tipo !=""{
+			query = query.Joins("JOIN tipo_prodotto ON tipo_prodotto.id = prodotto.tipo_prodotto_id").Where("tipo_prodotto.corpo_messaggio = ?", tipo)
+		}
+
+		sort := c.DefaultQuery("sort", "data_inserimento")
+		order := c.DefaultQuery("order", "desc")
+		query = query.Order(fmt.Sprintf("%s %s", sort, order))
+
+		query.Find(&prodotti)
+		c.JSON(http.StatusOK, prodotti)
+	}
+}
+func EliminaProdotto(db*gorm.DB) gin.HandlerFunc{
+	return func(c *gin.Context) {
+		id := c.Param("id")
+
+		var prodotto Prodotto
+		if err := db.Where("id = ?", id).First(&prodotto).Error; err != nil{
+			c.JSON(http.StatusNotFound, gin.H{"error":"Prodotto non trovato"})
+			return 
+		}
+		if err := db.Delete(&prodotto).Error; err != nil{
+			c.JSON(http.StatusInternalServerError, gin.H{"error":"Errore durante l'eliminazione del prodotto"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message":"Prodotto rimosso con successo"})
+	}
+}
+
+func AggiornamentoStock(db*gorm.DB) gin.HandlerFunc{
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		utenteID, _:= c.Get("utente_id")
+
+		var req struct{
+			NewQuantita int `json:"nuova_quantita" binding:"required"`
+			Note string `json:"note"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil{
+			c.JSON(http.StatusBadRequest, gin.H{"error":"Dati non validi"})
+			return 
+		}
+
+		err := db.Transaction(func(tx *gorm.DB) error {
+			var prodotto Prodotto
+			if err := tx.Set("gorm:query_option", "FOR UPDATE").First(&prodotto, "id = ?", id).Error; err != nil{
+				return err
+			}
+
+			differenza := req.NewQuantita - prodotto.QuantitaDisponibile
+			tipo := "Carico"
+			if differenza < 0 {
+				tipo = "Scarico"
+				differenza = -differenza
+			}
+
+			prodotto.QuantitaDisponibile = req.NewQuantita
+			if err := tx.Save(&prodotto).Error; err != nil{
+				return err 
+			}
+
+			movimento := MovimentoMagazzino{
+				ProdottoID: prodotto.ID,
+				TipoMovimento: tipo,
+				Quantita: differenza, 
+				UtenteOperazioneID: utenteID.(uuid.UUID),
+				Note: req.Note,
+			}
+
+			if err := tx.Create(&movimento).Error; err != nil{
+				return err
+			}
+
+			if prodotto.QuantitaDisponibile < prodotto.SogliaMinimaDiMagazzino{
+				fmt.Printf("\nALERT SOGLIA MINIMA\nProdotto: %s\nQuantità attuale: %d (Soglia: %d)", prodotto.NomeOggetto, prodotto.QuantitaDisponibile, prodotto.SogliaMinimaDiMagazzino)
+			}
+			return nil 
+		})
+		if err != nil{
+			c.JSON(http.StatusInternalServerError, gin.H{"error":"Errore nell'aggiornamento dello stock"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message":"Stock aggiornato e movimento registrato con successo"})
+	}
+}
+func ModifcaProdotto(db*gorm.DB) gin.HandlerFunc{
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		var req struct{
+			NomeOggetto  string  `json:"nome_oggetto"`
+			Descrizione  string  `json:"descrizione"`
+			Prezzo       float64 `json:"prezzo_unitario"`
+			SogliaMinima int     `json:"soglia_minima"`
+			TipoID       uuid.UUID `json:"tipo_prodotto_id"`
+		}
+
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error":"Dati non validi"})
+			return 
+		}
+
+		result := db.Model(&Prodotto{}).Where("id = ?", id).Updates(map[string]interface{}{
+			"nome_oggetto":               req.NomeOggetto,
+			"descrizione":                req.Descrizione,
+			"prezzo_unitario":            req.Prezzo,
+			"soglia_minima_di_magazzino": req.SogliaMinima,
+			"tipo_prodotto_id":           req.TipoID,
+			"data_ultima_modifica":       time.Now(),
+		})
+
+		if result.Error != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error":"Errore nella modifica del prodotto"})
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message":"Prodotto modificato con successo"})
+	}
+}
+
+func TipiProdotto(db*gorm.DB) gin.HandlerFunc{
+	return func(c *gin.Context) {
+		var tipi []TipoProdotto
+		db.Find(&tipi)
+		c.JSON(http.StatusOK, tipi)
+	}
+}
