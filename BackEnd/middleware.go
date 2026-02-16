@@ -1,8 +1,10 @@
 package main
 
 import (
+	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -40,5 +42,26 @@ func AuthMiddleware(ruoloRichiesto string) gin.HandlerFunc {
 		c.Set("ruolo", claims.Ruolo)
 		
 		c.Next() 
+	}
+}
+
+func LoggerMiddleware() gin.HandlerFunc{
+	return func(c *gin.Context) {
+		start := time.Now()
+		c.Next()
+
+		latency := time.Since(start)
+		status := c.Writer.Status()
+
+		if status >= 400{
+			log.Printf("Allerta sicurezza \n%d \n%s \n%s \n%s \n%s",
+			status,
+			latency,
+			c.ClientIP(),
+			c.Request.Method,
+			c.Request.URL.Path,
+		
+		)
+		}
 	}
 }

@@ -39,9 +39,10 @@ func setupInitialData(db *gorm.DB) {
 
 func CORSMiddleware() gin.HandlerFunc {
     return func(c *gin.Context) {
-        c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+        c.Writer.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
         c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
-        c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+        c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
         
         if c.Request.Method == "OPTIONS" {
             c.AbortWithStatus(204)
@@ -90,13 +91,16 @@ func main() {
     setupInitialData(db)
 
     
-    r := gin.Default()
-    r.Use(CORSMiddleware())
+    r := gin.New()
+	r.Use(LoggerMiddleware())
+	r.Use(gin.Recovery())
+	r.Use(CORSMiddleware())
 
 
     api := r.Group("/api")
     {
         api.POST("/login", GestioneLogin(db))
+		api.POST("/refresh", GestioneRefreshToken(db))
         api.POST("/forgot-password", RichiestaResetPassword(db))
         api.POST("/reset-password-confirm", ConfermaResetPassword(db))
     }
@@ -126,6 +130,8 @@ func main() {
 
 		inventario.GET("/tipi", TipiProdotto(db))
 	}
+
+	
 
 
     fmt.Println("Server su http://localhost:8080")

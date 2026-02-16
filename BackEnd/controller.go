@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -515,5 +516,44 @@ func TipiProdotto(db*gorm.DB) gin.HandlerFunc{
 		var tipi []TipoProdotto
 		db.Find(&tipi)
 		c.JSON(http.StatusOK, tipi)
+	}
+}
+
+func GestioneRefreshToken(db*gorm.DB) gin.HandlerFunc{
+	return func(c *gin.Context) {
+		var req struct{
+			RefreshToken string `json:"refresh_token" binding:"required"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil{
+			c.JSON(http.StatusBadRequest, gin.H{"error":"Refresh token richiesto"})
+			return
+		}
+
+		claims := &Claims{}
+		token, err := jwt.ParseWithClaims(req.RefreshToken, claims, func(token *jwt.Token) (interface{}, error) {
+			return jwtKey, nil
+		})
+		var utente Utente
+		if err := db.Select("stato_account").First(&utente, "id = ?", claims.UtenteID).Error; err != nil || utente.StatoAccount == "Bloccato" {
+    		c.JSON(http.StatusUnauthorized, gin.H{"error": "Account bloccato o inesistente"})
+    		return
+		}
+
+		if err != nil || !token.Valid{
+			c.JSON(http.StatusUnauthorized, gin.H{"error":"Refresh token non valido"})
+			return
+		}
+
+		newAccess, newRefresh, err := GenerateTokens(claims.UtenteID, claims.Ruolo)
+		if err != nil{
+			c.JSON(http.StatusInternalServerError, gin.H{"error":"Errore nella rigenerazione del token"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"access_token": newAccess,
+			"refresh_token": newRefresh,
+
+		})
 	}
 }
