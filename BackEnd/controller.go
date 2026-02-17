@@ -173,7 +173,7 @@ func ConfermaResetPassword(db * gorm.DB) gin.HandlerFunc{
 }
 type GraficoPerCategoria struct{
 	Nome string `json:"nome"`
-	Quantita string `json:"quantita"`
+	Quantita int64 `json:"quantita"`
 }
 type StatisticheDashboard struct{
 	UtentiTotali int64 `json:"utenti_totali"`
@@ -331,57 +331,114 @@ func ModificaUtente(db *gorm.DB) gin.HandlerFunc {
 		c.JSON(http.StatusOK, gin.H{"message": "Utente e ruolo aggiornati correttamente"})
 	}
 }
-func CreaProdotto(db*gorm.DB) gin.HandlerFunc{
+// func CreaProdotto(db*gorm.DB) gin.HandlerFunc{
+// 	return func(c *gin.Context) {
+// 		creatoreID, _:= c.Get("utente_id")
+
+// 		var req struct{
+// 			NomeOggetto string  `json:"nome_oggetto" binding:"required"`
+// 			Descrizione string  `json:"descrizione" `
+// 			QuantitaDisponibile int  `json:"quantita_disponibile"`
+// 			PrezzoUnitario float64 `json:"prezzo_unitario" binding:"required"`
+// 			SogliaMinima int `json:"soglia_minima"`
+// 			TipoProdottoID uuid.UUID `json:"tipo_prodotto_id" binding:"required"`
+// 		}
+
+// 		if err:= c.ShouldBindJSON(&req); err != nil{
+// 			fmt.Println("Errore binding:", err)
+// 			c.JSON(http.StatusBadRequest, gin.H{"error":"Dati prodotto non validi"})
+// 			return 
+// 		}
+
+// 		err := db.Transaction(func(tx *gorm.DB) error {
+// 			nuovoProdotto := Prodotto{
+// 				NomeOggetto: req.NomeOggetto,
+// 				Descrizione: req.Descrizione,
+// 				QuantitaDisponibile: req.QuantitaDisponibile,
+// 				PrezzoUnitario: req.PrezzoUnitario,
+// 				SogliaMinimaDiMagazzino: req.SogliaMinima,
+// 				TipoProdottoID: req.TipoProdottoID,
+// 				CreatoDaID: creatoreID.(uuid.UUID),
+// 			}
+
+// 			if err:=tx.Create(&nuovoProdotto).Error; err!=nil{
+// 				return err
+// 			}
+
+// 			return tx.Create(&MovimentoMagazzino{
+// 				ProdottoID:         nuovoProdotto.ID,
+// 				TipoMovimento:      "Carico iniziale",
+// 				Quantita:           req.QuantitaDisponibile,
+// 				UtenteOperazioneID: creatoreID.(uuid.UUID),
+// 				Note:               "Inserimento iniziale",
+// 			}).Error
+// 		})
+
+// 		if err != nil {
+// 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Errore salvataggio"})
+// 			return
+// 		}
+// 		c.JSON(http.StatusCreated, gin.H{"message": "Prodotto creato"})
+// 	}
+// }
+// func GetTipiProdotto(db *gorm.DB) gin.HandlerFunc {
+// 	return func(c *gin.Context) {
+// 		var tipi []TipoProdotto
+// 		db.Find(&tipi)
+// 		c.JSON(http.StatusOK, tipi)
+// 	}
+// }
+func GetTipiProdotto(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		creatoreID, _:= c.Get("utente_id")
+		var tipi []TipoProdotto
+		db.Find(&tipi)
+		c.JSON(200, tipi)
+	}
+}
 
-		var req struct{
-			NomeOggetto string  `json:"nome_oggetto" binding:"required"`
-			Descrizione string  `json:"descrizione" `
-			QuantitaDisponibile int  `json:"quantita_disponibile"`
-			PrezzoUnitario float64 `json:"prezzo_unitario" binding:"required"`
-			SogliaMinimaDiMagazzino int `json:"soglia_minima"`
-			TipoProdottoID uuid.UUID `json:"tipo_prodotto_id" binding:"required"`
+func CreaProdotto(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		creatoreID, _ := c.Get("utente_id")
+
+		var req struct {
+			NomeOggetto         string    `json:"nome_oggetto" binding:"required"`
+			Descrizione         string    `json:"descrizione"`
+			QuantitaDisponibile int       `json:"quantita_disponibile"`
+			PrezzoUnitario      float64   `json:"prezzo_unitario" binding:"required"`
+			SogliaMinima        int       `json:"soglia_minima"`
+			TipoProdottoID      uuid.UUID `json:"tipo_prodotto_id" binding:"required"`
 		}
 
-		if err:= c.ShouldBindJSON(&req); err != nil{
-			c.JSON(http.StatusBadRequest, gin.H{"error":"Dati prodotto non validi"})
-			return 
-		}
-
-		err := db.Transaction(func(tx *gorm.DB) error {
-			nuovoProdotto := Prodotto{
-				NomeOggetto: req.NomeOggetto,
-				Descrizione: req.Descrizione,
-				QuantitaDisponibile: req.QuantitaDisponibile,
-				PrezzoUnitario: req.PrezzoUnitario,
-				SogliaMinimaDiMagazzino: req.SogliaMinimaDiMagazzino,
-				TipoProdottoID: req.TipoProdottoID,
-				CreatoDaID: creatoreID.(uuid.UUID),
-			}
-
-			if err:=tx.Create(&nuovoProdotto).Error; err!=nil{
-				return err
-			}
-
-			movimento := MovimentoMagazzino{
-				ProdottoID: nuovoProdotto.ID,
-				TipoMovimento: "Carico iniziale",
-				Quantita: req.QuantitaDisponibile,
-				UtenteOperazioneID: creatoreID.(uuid.UUID),
-				Note: "Inserimento nuovo prodotto",
-			}
-			return tx.Create(&movimento).Error
-		})
-
-		if err != nil{
-			c.JSON(http.StatusInternalServerError, gin.H{"error":"Errore nel salvataggio del prodotto"})
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(400, gin.H{"error": err.Error()})
 			return
 		}
 
-		c.JSON(http.StatusCreated, gin.H{"message":"Prodotto creato e movimento registrato con successo"})
+		err := db.Transaction(func(tx *gorm.DB) error {
+			nuovo := Prodotto{
+				NomeOggetto:             req.NomeOggetto,
+				Descrizione:             req.Descrizione,
+				QuantitaDisponibile:     req.QuantitaDisponibile,
+				PrezzoUnitario:          req.PrezzoUnitario,
+				SogliaMinimaDiMagazzino: req.SogliaMinima,
+				TipoProdottoID:          req.TipoProdottoID,
+				CreatoDaID:              creatoreID.(uuid.UUID),
+			}
+			if err := tx.Create(&nuovo).Error; err != nil { return err }
+
+			return tx.Create(&MovimentoMagazzino{
+				ProdottoID: nuovo.ID,
+				TipoMovimento: "Carico iniziale",
+				Quantita: nuovo.QuantitaDisponibile,
+				UtenteOperazioneID: creatoreID.(uuid.UUID),
+			}).Error
+		})
+
+		if err != nil { c.JSON(500, gin.H{"error": "Errore salvataggio"}); return }
+		c.JSON(201, gin.H{"message": "Creato"})
 	}
 }
+
 func ListaProdotti(db*gorm.DB) gin.HandlerFunc{
 	return func(c *gin.Context) {
 		var prodotti []Prodotto
@@ -498,7 +555,7 @@ func ModifcaProdotto(db*gorm.DB) gin.HandlerFunc{
 			"nome_oggetto":               req.NomeOggetto,
 			"descrizione":                req.Descrizione,
 			"prezzo_unitario":            req.Prezzo,
-			"soglia_minima_di_magazzino": req.SogliaMinima,
+			"soglia_minima": req.SogliaMinima,
 			"tipo_prodotto_id":           req.TipoID,
 			"data_ultima_modifica":       time.Now(),
 		})
@@ -511,13 +568,7 @@ func ModifcaProdotto(db*gorm.DB) gin.HandlerFunc{
 	}
 }
 
-func TipiProdotto(db*gorm.DB) gin.HandlerFunc{
-	return func(c *gin.Context) {
-		var tipi []TipoProdotto
-		db.Find(&tipi)
-		c.JSON(http.StatusOK, tipi)
-	}
-}
+
 
 func GestioneRefreshToken(db*gorm.DB) gin.HandlerFunc{
 	return func(c *gin.Context) {

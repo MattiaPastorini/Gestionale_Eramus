@@ -20,6 +20,12 @@ func setupInitialData(db *gorm.DB) {
 	db.FirstOrCreate(&adminRuolo, Ruolo{NomeRuolo: "Admin"})
 	db.FirstOrCreate(&Ruolo{}, Ruolo{NomeRuolo: "Operatore"})
 
+
+	categorie := []string{"Buste", "Carta", "Toner"}
+	for _, nome := range categorie {
+		db.FirstOrCreate(&TipoProdotto{}, TipoProdotto{CorpoMessaggio: nome})
+	}
+
 	var count int64
 	db.Model(&Utente{}).Count(&count)
 	if count == 0 {
@@ -82,9 +88,10 @@ func main() {
     sqlDB.SetConnMaxLifetime(time.Hour)
 
 
-    if err := db.AutoMigrate(&Ruolo{}, &Utente{}, &LogAccessi{}); err != nil {
-        log.Println("Errore migrazione:", err)
-    } else {
+
+if err := db.AutoMigrate(&Ruolo{}, &Utente{}, &LogAccessi{}, &TipoProdotto{}, &Prodotto{}, &MovimentoMagazzino{}); err != nil {
+    log.Println("Errore migrazione:", err)
+}else {
         fmt.Println("Database sincronizzato")
     }
 
@@ -103,6 +110,7 @@ func main() {
 		api.POST("/refresh", GestioneRefreshToken(db))
         api.POST("/forgot-password", RichiestaResetPassword(db))
         api.POST("/reset-password-confirm", ConfermaResetPassword(db))
+		
     }
 
 
@@ -119,17 +127,17 @@ func main() {
         admin.GET("/dashboard/statistiche", GetStatisticheDashboard(db))
     }
 
-	inventario := api.Group("/inventario")
-	inventario.Use(AuthMiddleware(""))
-	{
-		inventario.GET("/prodotti", ListaProdotti(db))
-		inventario.POST("/prodotti", CreaProdotto(db))
-		inventario.PUT("/prodotti/:id", ModifcaProdotto(db))
-		inventario.PUT("/prodotti/:id/stock", AggiornamentoStock(db))
-		inventario.DELETE("/prodotti/:id", EliminaProdotto(db))
+	inventario := api.Group("/inventario") 
+    inventario.Use(AuthMiddleware(""))
+    {
+        inventario.GET("/prodotti", ListaProdotti(db))
+        inventario.POST("/prodotti", CreaProdotto(db))
+        inventario.PUT("/prodotti/:id", ModifcaProdotto(db))
+        inventario.PUT("/prodotti/:id/stock", AggiornamentoStock(db))
+        inventario.DELETE("/prodotti/:id", EliminaProdotto(db))
 
-		inventario.GET("/tipi", TipiProdotto(db))
-	}
+        inventario.GET("/tipi", GetTipiProdotto(db)) 
+    }
 
 	
 
