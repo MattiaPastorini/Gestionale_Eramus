@@ -118,6 +118,7 @@ if err := db.AutoMigrate(&Ruolo{}, &Utente{}, &LogAccessi{}, &TipoProdotto{}, &P
     admin.Use(AuthMiddleware("Admin"))
     {
 
+		admin.GET("/utenti/ruoli", GetRuoli(db))
         admin.GET("/utenti", GestioneUtenti(db))      
         admin.POST("/utenti", CreaUtente(db))         
         admin.PUT("/utenti/:id", ModificaUtente(db))   
@@ -128,15 +129,18 @@ if err := db.AutoMigrate(&Ruolo{}, &Utente{}, &LogAccessi{}, &TipoProdotto{}, &P
     }
 
 	inventario := api.Group("/inventario") 
-    inventario.Use(AuthMiddleware(""))
     {
-        inventario.GET("/prodotti", ListaProdotti(db))
-        inventario.POST("/prodotti", CreaProdotto(db))
-        inventario.PUT("/prodotti/:id", ModifcaProdotto(db))
-        inventario.PUT("/prodotti/:id/stock", AggiornamentoStock(db))
-        inventario.DELETE("/prodotti/:id", EliminaProdotto(db))
+		inventario.DELETE("/prodotti/:id", EliminaProdotto(db))
+		inventario.Use(AuthMiddleware(""))
+		{
 
-        inventario.GET("/tipi", GetTipiProdotto(db)) 
+			inventario.GET("/prodotti", ListaProdotti(db))
+			inventario.POST("/prodotti", CreaProdotto(db))
+			inventario.PUT("/prodotti/:id", ModifcaProdotto(db))
+			inventario.PUT("/prodotti/:id/stock", AggiornamentoStock(db))
+	
+			inventario.GET("/tipi", GetTipiProdotto(db)) 
+		}
     }
 
 	

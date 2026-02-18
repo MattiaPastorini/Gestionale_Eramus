@@ -331,6 +331,17 @@ func ModificaUtente(db *gorm.DB) gin.HandlerFunc {
 		c.JSON(http.StatusOK, gin.H{"message": "Utente e ruolo aggiornati correttamente"})
 	}
 }
+func GetRuoli(db *gorm.DB) gin.HandlerFunc {
+    return func(c *gin.Context) {
+        var ruoli []Ruolo
+        if err := db.Find(&ruoli).Error; err != nil {
+            c.JSON(500, gin.H{"error": "Errore recupero ruoli"})
+            return
+        }
+        c.JSON(200, gin.H{"ruoli": ruoli})
+    }
+}
+
 
 func GetTipiProdotto(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -425,7 +436,11 @@ func EliminaProdotto(db*gorm.DB) gin.HandlerFunc{
 func AggiornamentoStock(db*gorm.DB) gin.HandlerFunc{
 	return func(c *gin.Context) {
 		id := c.Param("id")
-		utenteID, _:= c.Get("utente_id")
+		utenteID, exists := c.Get("utente_id")
+        if !exists || utenteID == nil {
+            c.JSON(401, gin.H{"error": "Utente non autenticato nel context"})
+            return
+        }
 
 		var req struct{
 			NewQuantita int `json:"nuova_quantita" binding:"required"`
@@ -436,11 +451,17 @@ func AggiornamentoStock(db*gorm.DB) gin.HandlerFunc{
 			return 
 		}
 
+		utenteUUID, ok := utenteID.(uuid.UUID)
+        if !ok {
+            c.JSON(400, gin.H{"error": "Formato utente_id non valido"})
+            return
+        }
+
 		err := db.Transaction(func(tx *gorm.DB) error {
-			var prodotto Prodotto
-			if err := tx.Set("gorm:query_option", "FOR UPDATE").First(&prodotto, "id = ?", id).Error; err != nil{
-				return err
-			}
+            var prodotto Prodotto
+            if err := tx.Set("gorm:query_option", "FOR UPDATE").First(&prodotto, "id = ?", id).Error; err != nil{
+                return fmt.Errorf("prodotto non trovato: %w", err)
+            }
 
 			differenza := req.NewQuantita - prodotto.QuantitaDisponibile
 			tipo := "Carico"
@@ -458,7 +479,7 @@ func AggiornamentoStock(db*gorm.DB) gin.HandlerFunc{
 				ProdottoID: prodotto.ID,
 				TipoMovimento: tipo,
 				Quantita: differenza, 
-				UtenteOperazioneID: utenteID.(uuid.UUID),
+				UtenteOperazioneID: utenteUUID,
 				Note: req.Note,
 			}
 
@@ -467,14 +488,16 @@ func AggiornamentoStock(db*gorm.DB) gin.HandlerFunc{
 			}
 
 			if prodotto.QuantitaDisponibile < prodotto.SogliaMinimaDiMagazzino{
-				fmt.Printf("\nALERT SOGLIA MINIMA\nProdotto: %s\nQuantità attuale: %d (Soglia: %d)", prodotto.NomeOggetto, prodotto.QuantitaDisponibile, prodotto.SogliaMinimaDiMagazzino)
-			}
-			return nil 
-		})
+                fmt.Printf("\nALERT SOGLIA MINIMA\nProdotto: %s\nQuantità: %d (Soglia: %d)\n", 
+                    prodotto.NomeOggetto, prodotto.QuantitaDisponibile, prodotto.SogliaMinimaDiMagazzino)
+            }
+            return nil 
+        })
 		if err != nil{
-			c.JSON(http.StatusInternalServerError, gin.H{"error":"Errore nell'aggiornamento dello stock"})
-			return
-		}
+            fmt.Printf("Errore AggiornamentoStock %s: %v\n", id, err) 
+            c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+            return
+        }
 
 		c.JSON(http.StatusOK, gin.H{"message":"Stock aggiornato e movimento registrato con successo"})
 	}

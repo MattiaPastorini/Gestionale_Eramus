@@ -15,14 +15,11 @@ export default function Login() {
     setError("");
 
     try {
-      // Chiamata al backend Go
       const response = await api.post("/login", { username, password });
 
-      // Salvataggio Token (Requisito punto 5)
       localStorage.setItem("access_token", response.data.access_token);
       localStorage.setItem("refresh_token", response.data.refresh_token);
 
-      // Reindirizzamento alla Dashboard
       router.push("/dashboard");
     } catch (err) {
       setError(err.response?.data?.error || "Errore di connessione");

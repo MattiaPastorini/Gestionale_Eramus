@@ -13,7 +13,6 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Assicurati che l'URL coincida con quello del backend (/stats o /statistiche)
         const res = await api.get("/dashboard/statistiche");
         setStats(res.data);
       } catch (err) {
@@ -28,7 +27,6 @@ export default function Dashboard() {
   if (loading)
     return <div className="p-5 text-center">Caricamento in corso...</div>;
 
-  // SICUREZZA: Se stats è null o le liste sono null, inizializziamo array vuoti
   const movimenti = stats?.ultimi_movimenti || [];
   const categorie = stats?.grafico_categorie || [];
 

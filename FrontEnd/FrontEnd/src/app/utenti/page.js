@@ -19,15 +19,27 @@ export default function UsersPage() {
   });
   const [ruoli, setRuoli] = useState([]);
 
-  // Carica ruoli all'avvio
   useEffect(() => {
     const fetchRuoli = async () => {
       try {
         const res = await api.get("/utenti/ruoli");
-        console.log("Ruoli caricati:", res.data);
-        setRuoli(res.data || []);
+        console.log("API Response completa:", res);
+        console.log("res.data:", res.data);
+
+        const ruoliArray = Array.isArray(res.data.ruoli)
+          ? res.data.ruoli
+          : res.data.ruoli?.data || [];
+
+        console.log(
+          "Ruoli SETTATI:",
+          ruoliArray,
+          "Lunghezza:",
+          ruoliArray.length,
+        );
+        setRuoli(ruoliArray);
       } catch (err) {
         console.error("Errore caricamento ruoli", err);
+        setRuoli([]);
       }
     };
     fetchRuoli();
@@ -54,10 +66,8 @@ export default function UsersPage() {
     e.preventDefault();
     try {
       if (editingUser) {
-        // Update
         await api.put(`/utenti/${editingUser.ID}`, formData);
       } else {
-        // Create
         const payload = {
           ...formData,
           data_nascita: formData.data_nascita || null,
@@ -117,7 +127,7 @@ export default function UsersPage() {
   return (
     <div className="container">
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2 className="fw-bold text-primary">👥 Gestione Utenti</h2>
+        <h2 className="fw-bold text-primary">Gestione Utenti</h2>
         <button
           className="btn btn-success"
           onClick={() => {
@@ -312,11 +322,12 @@ export default function UsersPage() {
                         }
                       >
                         <option value="">Seleziona ruolo...</option>
-                        {ruoli.map((r) => (
-                          <option key={r.ID} value={r.ID}>
-                            {r.NomeRuolo}
-                          </option>
-                        ))}
+                        {Array.isArray(ruoli) &&
+                          ruoli.map((r) => (
+                            <option key={r.ID} value={r.ID}>
+                              {r.NomeRuolo}
+                            </option>
+                          ))}
                       </select>
                     </div>
                     <div className="col-md-6">

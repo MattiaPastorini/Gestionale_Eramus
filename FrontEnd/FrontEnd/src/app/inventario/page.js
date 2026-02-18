@@ -21,7 +21,7 @@ export default function Inventario() {
     const fetchTipi = async () => {
       try {
         const res = await api.get("/inventario/tipi");
-        console.log("Dati arrivati:", res.data); // Guarda la console F12 per sicurezza
+        console.log("Dati arrivati:", res.data);
         setTipi(res.data || []);
       } catch (err) {
         console.error("Errore caricamento tipi", err);
@@ -75,6 +75,19 @@ export default function Inventario() {
       } catch (err) {
         alert("Errore nell'aggiornamento stock");
       }
+    }
+  };
+
+  const handleElimina = async (id, nome) => {
+    if (!confirm(`Eliminare "${nome}" dal magazzino?`)) return;
+
+    try {
+      await api.delete(`/inventario/prodotti/${id}`);
+      fetchProdotti();
+      alert("Prodotto eliminato!");
+    } catch (err) {
+      console.error("Errore eliminazione:", err);
+      alert("Errore eliminazione");
     }
   };
 
@@ -158,10 +171,25 @@ export default function Inventario() {
                     <button
                       className="btn btn-sm btn-outline-primary me-2"
                       onClick={() =>
-                        handleAggiornamentoStock(p.Id, p.quantita_disponibile)
+                        handleAggiornamentoStock(
+                          p.id || p.ID,
+                          p.QuantitaDisponibile || p.quantita_disponibile,
+                        )
                       }
                     >
                       Aggiorna Stock
+                    </button>
+
+                    <button
+                      className="btn btn-sm btn-outline-danger"
+                      onClick={() =>
+                        handleElimina(
+                          p.id || p.ID,
+                          p.NomeOggetto || p.nome_oggetto,
+                        )
+                      }
+                    >
+                      Elimina
                     </button>
                   </td>
                 </tr>
