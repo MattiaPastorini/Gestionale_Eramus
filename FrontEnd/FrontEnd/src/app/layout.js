@@ -22,7 +22,7 @@ export default function RootLayout({ children }) {
             <div className="collapse navbar-collapse" id="navbarNav">
               <ul className="navbar-nav me-auto">
                 <li className="nav-item">
-                  <Link className="nav-link" href="/dashboar">
+                  <Link className="nav-link" href="/dashboard">
                     Dashboard
                   </Link>
                 </li>

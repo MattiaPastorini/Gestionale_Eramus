@@ -33,12 +33,13 @@ func GenerateTokens(UtenteID uuid.UUID, Ruolo string) (string, string, error){
 	refreshExpiration := time.Now().Add(7*24*time.Hour)
 	refreshClaims := &Claims{
 		UtenteID: UtenteID,
+		Ruolo:    Ruolo,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(refreshExpiration),
 		},
 	}
 	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims)
-	refreshString, err := refreshToken.SignedString(jwtKey)
+	refreshString, _ := refreshToken.SignedString(jwtKey)
 
 	return accessString, refreshString, err
 }

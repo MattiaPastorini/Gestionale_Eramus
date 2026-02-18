@@ -331,63 +331,7 @@ func ModificaUtente(db *gorm.DB) gin.HandlerFunc {
 		c.JSON(http.StatusOK, gin.H{"message": "Utente e ruolo aggiornati correttamente"})
 	}
 }
-// func CreaProdotto(db*gorm.DB) gin.HandlerFunc{
-// 	return func(c *gin.Context) {
-// 		creatoreID, _:= c.Get("utente_id")
 
-// 		var req struct{
-// 			NomeOggetto string  `json:"nome_oggetto" binding:"required"`
-// 			Descrizione string  `json:"descrizione" `
-// 			QuantitaDisponibile int  `json:"quantita_disponibile"`
-// 			PrezzoUnitario float64 `json:"prezzo_unitario" binding:"required"`
-// 			SogliaMinima int `json:"soglia_minima"`
-// 			TipoProdottoID uuid.UUID `json:"tipo_prodotto_id" binding:"required"`
-// 		}
-
-// 		if err:= c.ShouldBindJSON(&req); err != nil{
-// 			fmt.Println("Errore binding:", err)
-// 			c.JSON(http.StatusBadRequest, gin.H{"error":"Dati prodotto non validi"})
-// 			return 
-// 		}
-
-// 		err := db.Transaction(func(tx *gorm.DB) error {
-// 			nuovoProdotto := Prodotto{
-// 				NomeOggetto: req.NomeOggetto,
-// 				Descrizione: req.Descrizione,
-// 				QuantitaDisponibile: req.QuantitaDisponibile,
-// 				PrezzoUnitario: req.PrezzoUnitario,
-// 				SogliaMinimaDiMagazzino: req.SogliaMinima,
-// 				TipoProdottoID: req.TipoProdottoID,
-// 				CreatoDaID: creatoreID.(uuid.UUID),
-// 			}
-
-// 			if err:=tx.Create(&nuovoProdotto).Error; err!=nil{
-// 				return err
-// 			}
-
-// 			return tx.Create(&MovimentoMagazzino{
-// 				ProdottoID:         nuovoProdotto.ID,
-// 				TipoMovimento:      "Carico iniziale",
-// 				Quantita:           req.QuantitaDisponibile,
-// 				UtenteOperazioneID: creatoreID.(uuid.UUID),
-// 				Note:               "Inserimento iniziale",
-// 			}).Error
-// 		})
-
-// 		if err != nil {
-// 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Errore salvataggio"})
-// 			return
-// 		}
-// 		c.JSON(http.StatusCreated, gin.H{"message": "Prodotto creato"})
-// 	}
-// }
-// func GetTipiProdotto(db *gorm.DB) gin.HandlerFunc {
-// 	return func(c *gin.Context) {
-// 		var tipi []TipoProdotto
-// 		db.Find(&tipi)
-// 		c.JSON(http.StatusOK, tipi)
-// 	}
-// }
 func GetTipiProdotto(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var tipi []TipoProdotto
