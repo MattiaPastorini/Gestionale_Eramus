@@ -18,7 +18,8 @@ import (
 func setupInitialData(db *gorm.DB) {
 	var adminRuolo Ruolo
 	db.FirstOrCreate(&adminRuolo, Ruolo{NomeRuolo: "Admin"})
-	db.FirstOrCreate(&Ruolo{}, Ruolo{NomeRuolo: "Operatore"})
+	var operatoreRuolo Ruolo
+    db.FirstOrCreate(&operatoreRuolo, Ruolo{NomeRuolo: "Operatore"})
 
 
 	categorie := []string{"Buste", "Carta", "Toner"}
@@ -38,7 +39,20 @@ func setupInitialData(db *gorm.DB) {
 		}
 		db.Create(&admin)
 		fmt.Println("Utente Admin creato (Pass: Admin123!)")
+		
+		passOperatore, _ := HashPassword("User123!")
+			operatore := Utente{
+				Username:     "user",
+				Password:     passOperatore,
+				Nome:         "Mario",
+				Cognome:      "Rossi", 
+				StatoAccount: "Attivo",
+				RuoloID:      operatoreRuolo.ID,
+			}
+			db.Create(&operatore)
+			fmt.Println(" Utente OPERATORE creato: user / User123!")
 	}
+    
 }
 
 
@@ -136,7 +150,7 @@ if err := db.AutoMigrate(&Ruolo{}, &Utente{}, &LogAccessi{}, &TipoProdotto{}, &P
 
 			inventario.GET("/prodotti", ListaProdotti(db))
 			inventario.POST("/prodotti", CreaProdotto(db))
-			inventario.PUT("/prodotti/:id", ModifcaProdotto(db))
+			inventario.PUT("/prodotti/:id", ModificaProdotto(db))
 			inventario.PUT("/prodotti/:id/stock", AggiornamentoStock(db))
 	
 			inventario.GET("/tipi", GetTipiProdotto(db)) 

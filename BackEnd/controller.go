@@ -501,7 +501,7 @@ func AggiornamentoStock(db*gorm.DB) gin.HandlerFunc{
 		c.JSON(http.StatusOK, gin.H{"message":"Stock aggiornato e movimento registrato con successo"})
 	}
 }
-func ModifcaProdotto(db*gorm.DB) gin.HandlerFunc{
+func ModificaProdotto(db*gorm.DB) gin.HandlerFunc{
 	return func(c *gin.Context) {
 		id := c.Param("id")
 		var req struct{
