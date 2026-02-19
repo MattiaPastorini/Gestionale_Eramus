@@ -117,8 +117,7 @@ func RichiestaResetPassword(db*gorm.DB) gin.HandlerFunc{
 			return 
 		}
 
-		// Simulazione invio email
-		fmt.Printf("\n--- EMAIL DI RECUPERO per %s ---\nLink: http://localhost:3000/reset-password?token=%s\n--------------------------------\n", utente.Email, token)
+		fmt.Printf("\n--- EMAIL DI RECUPERO per %s ---\nLink: http://localhost:3000/reset-password?token=%s\n", utente.Email, token)
 
 		c.JSON(http.StatusOK, gin.H{"message": "Istruzioni inviate via email"})
 
